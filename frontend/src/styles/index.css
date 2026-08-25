@@ -1,0 +1,573 @@
+/* -------------------------------------------------------------------------
+   Design tokens
+   Light palette on :root; dark values apply under prefers-color-scheme
+   and are mirrored under [data-theme="dark"] so an explicit toggle (if one
+   is ever added) always wins. No toggle exists today — the page follows
+   the OS/browser setting only.
+------------------------------------------------------------------------- */
+:root {
+  color-scheme: light;
+
+  --surface-page: #f9f9f7;
+  --surface-card: #fcfcfb;
+  --surface-hover: #f1f1ee;
+
+  --text-primary: #0b0b0b;
+  --text-secondary: #52514e;
+  --text-muted: #898781;
+
+  --border-hairline: rgba(11, 11, 11, 0.1);
+  --chart-grid: #e1e0d9;
+  --chart-axis: #c3c2b7;
+  --chart-hover-fill: rgba(11, 11, 11, 0.04);
+
+  --series-predicted: #2a78d6;
+  --series-historical: #eb6834;
+
+  --status-critical: #d03b3b;
+  --status-good: #0ca30c;
+
+  --radius-md: 10px;
+  --radius-sm: 6px;
+  --shadow-card: 0 1px 2px rgba(11, 11, 11, 0.04), 0 1px 8px rgba(11, 11, 11, 0.03);
+
+  --font-sans: system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+
+    --surface-page: #0d0d0d;
+    --surface-card: #1a1a19;
+    --surface-hover: #232322;
+
+    --text-primary: #ffffff;
+    --text-secondary: #c3c2b7;
+    --text-muted: #898781;
+
+    --border-hairline: rgba(255, 255, 255, 0.1);
+    --chart-grid: #2c2c2a;
+    --chart-axis: #383835;
+    --chart-hover-fill: rgba(255, 255, 255, 0.05);
+
+    --series-predicted: #3987e5;
+    --series-historical: #d95926;
+
+    --status-critical: #e66767;
+    --status-good: #0ca30c;
+
+    --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.3), 0 1px 8px rgba(0, 0, 0, 0.25);
+  }
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+
+  --surface-page: #0d0d0d;
+  --surface-card: #1a1a19;
+  --surface-hover: #232322;
+
+  --text-primary: #ffffff;
+  --text-secondary: #c3c2b7;
+  --text-muted: #898781;
+
+  --border-hairline: rgba(255, 255, 255, 0.1);
+  --chart-grid: #2c2c2a;
+  --chart-axis: #383835;
+  --chart-hover-fill: rgba(255, 255, 255, 0.05);
+
+  --series-predicted: #3987e5;
+  --series-historical: #d95926;
+
+  --status-critical: #e66767;
+  --status-good: #0ca30c;
+
+  --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.3), 0 1px 8px rgba(0, 0, 0, 0.25);
+}
+
+/* -------------------------------------------------------------------------
+   Reset & base
+------------------------------------------------------------------------- */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--surface-page);
+  color: var(--text-primary);
+  font-family: var(--font-sans);
+  font-size: 15px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+h1,
+h2,
+h3,
+p,
+dl,
+dd,
+dt {
+  margin: 0;
+}
+
+button {
+  font-family: inherit;
+}
+
+/* -------------------------------------------------------------------------
+   App shell
+------------------------------------------------------------------------- */
+.app-shell {
+  min-height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.app-header {
+  border-bottom: 1px solid var(--border-hairline);
+  background: var(--surface-card);
+  padding: 18px 32px;
+}
+
+.app-header__brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  max-width: 1280px;
+  margin: 0 auto;
+}
+
+.app-header__mark {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  flex-shrink: 0;
+  background: linear-gradient(135deg, var(--series-predicted), var(--series-historical));
+}
+
+.app-header__title {
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+.app-header__subtitle {
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.app-main {
+  flex: 1;
+  padding: 28px 32px 48px;
+}
+
+.dashboard {
+  max-width: 1280px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+/* -------------------------------------------------------------------------
+   Filter bar
+------------------------------------------------------------------------- */
+.filter-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 20px;
+  background: var(--surface-card);
+  border: 1px solid var(--border-hairline);
+  border-radius: var(--radius-md);
+  padding: 18px 20px;
+  box-shadow: var(--shadow-card);
+}
+
+.filter-bar__hint {
+  font-size: 13px;
+  color: var(--text-muted);
+  flex-basis: 100%;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 180px;
+}
+
+.field__label {
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+}
+
+.field__control {
+  appearance: none;
+  background: var(--surface-page);
+  border: 1px solid var(--border-hairline);
+  border-radius: var(--radius-sm);
+  color: var(--text-primary);
+  font-size: 14px;
+  font-family: inherit;
+  padding: 9px 36px 9px 12px;
+  background-image: linear-gradient(45deg, transparent 50%, var(--text-muted) 50%),
+    linear-gradient(135deg, var(--text-muted) 50%, transparent 50%);
+  background-position:
+    calc(100% - 18px) center,
+    calc(100% - 13px) center;
+  background-size:
+    5px 5px,
+    5px 5px;
+  background-repeat: no-repeat;
+  cursor: pointer;
+}
+
+.field__control:focus-visible {
+  outline: 2px solid var(--series-predicted);
+  outline-offset: 1px;
+}
+
+.field__control:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* -------------------------------------------------------------------------
+   Layout: main content + sidebar
+------------------------------------------------------------------------- */
+.dashboard__layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 300px;
+  gap: 24px;
+  align-items: start;
+}
+
+@media (max-width: 900px) {
+  .dashboard__layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.dashboard__main {
+  min-width: 0;
+}
+
+.dashboard__sidebar {
+  position: sticky;
+  top: 20px;
+}
+
+.predictions-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(420px, 1fr));
+  gap: 20px;
+}
+
+/* -------------------------------------------------------------------------
+   Card
+------------------------------------------------------------------------- */
+.card {
+  background: var(--surface-card);
+  border: 1px solid var(--border-hairline);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-card);
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.card__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.card__title {
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+.card__subtitle {
+  font-size: 12.5px;
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+
+.card__body {
+  min-width: 0;
+}
+
+/* -------------------------------------------------------------------------
+   Model panel
+------------------------------------------------------------------------- */
+.model-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.model-meta__row {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 13px;
+}
+
+.model-meta__row dt {
+  color: var(--text-muted);
+}
+
+.model-meta__row dd {
+  color: var(--text-secondary);
+  font-weight: 500;
+  text-align: right;
+}
+
+.metric-row {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+}
+
+.metric-tile {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  background: var(--surface-page);
+  border: 1px solid var(--border-hairline);
+  border-radius: var(--radius-sm);
+  padding: 10px 12px;
+}
+
+.metric-tile__label {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+}
+
+.metric-tile__value {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--text-primary);
+  font-variant-numeric: proportional-nums;
+}
+
+/* -------------------------------------------------------------------------
+   Chart tooltip (recharts custom content)
+------------------------------------------------------------------------- */
+.chart-tooltip {
+  background: var(--surface-card);
+  border: 1px solid var(--border-hairline);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-card);
+  padding: 10px 12px;
+  min-width: 180px;
+}
+
+.chart-tooltip__label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 6px;
+}
+
+.chart-tooltip__row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12.5px;
+  padding: 2px 0;
+}
+
+.chart-tooltip__key {
+  width: 10px;
+  height: 3px;
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+
+.chart-tooltip__name {
+  color: var(--text-secondary);
+  flex: 1;
+}
+
+.chart-tooltip__value {
+  color: var(--text-primary);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+/* -------------------------------------------------------------------------
+   Status states: loading / error / empty
+------------------------------------------------------------------------- */
+.status-block {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px;
+  border-radius: var(--radius-sm);
+  font-size: 13.5px;
+}
+
+.status-block--loading {
+  color: var(--text-secondary);
+}
+
+.status-block--error {
+  background: color-mix(in srgb, var(--status-critical) 8%, var(--surface-card));
+  border: 1px solid color-mix(in srgb, var(--status-critical) 30%, transparent);
+  align-items: flex-start;
+}
+
+.status-block--empty {
+  color: var(--text-muted);
+  background: var(--surface-page);
+  border: 1px dashed var(--border-hairline);
+}
+
+.status-block__body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.status-block__title {
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.status-block__detail {
+  color: var(--text-secondary);
+}
+
+.status-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 999px;
+  background: var(--status-critical);
+  color: white;
+  font-size: 13px;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.status-icon--muted {
+  background: transparent;
+  color: var(--text-muted);
+  border: 1px solid var(--border-hairline);
+}
+
+.spinner {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  border: 2px solid var(--border-hairline);
+  border-top-color: var(--series-predicted);
+  animation: spin 0.7s linear infinite;
+  flex-shrink: 0;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.skeleton {
+  border-radius: var(--radius-md);
+  background: linear-gradient(
+    100deg,
+    var(--surface-hover) 30%,
+    var(--surface-card) 50%,
+    var(--surface-hover) 70%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.4s ease-in-out infinite;
+  border: 1px solid var(--border-hairline);
+}
+
+@keyframes shimmer {
+  from {
+    background-position: 150% 0;
+  }
+  to {
+    background-position: -50% 0;
+  }
+}
+
+/* -------------------------------------------------------------------------
+   Buttons
+------------------------------------------------------------------------- */
+.btn {
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  font-weight: 600;
+  padding: 7px 14px;
+  cursor: pointer;
+  border: 1px solid var(--border-hairline);
+  background: var(--surface-card);
+  color: var(--text-primary);
+  flex-shrink: 0;
+}
+
+.btn:hover {
+  background: var(--surface-hover);
+}
+
+.btn--ghost {
+  background: transparent;
+}
+
+/* -------------------------------------------------------------------------
+   Responsiveness
+------------------------------------------------------------------------- */
+@media (max-width: 640px) {
+  .app-header {
+    padding: 14px 18px;
+  }
+
+  .app-main {
+    padding: 20px 16px 36px;
+  }
+
+  .filter-bar {
+    padding: 16px;
+  }
+
+  .field {
+    min-width: 140px;
+    flex: 1 1 140px;
+  }
+
+  .card {
+    padding: 16px;
+  }
+
+  .metric-row {
+    grid-template-columns: 1fr;
+  }
+}

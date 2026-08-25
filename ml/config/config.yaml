@@ -1,0 +1,46 @@
+# Forecast Lab — central pipeline configuration
+# All paths, cutoffs, and hyperparameter-search settings live here.
+# Nothing downstream should hardcode a path, date, or constant that belongs here.
+
+paths:
+  raw_data: "data/raw/transactions.csv"
+  processed_dir: "data/processed"
+  train_features: "data/processed/train.parquet"
+  val_features: "data/processed/val.parquet"
+  test_features: "data/processed/test.parquet"
+  lookup_artifacts: "data/processed/lookup_artifacts.joblib"
+  eda_report_dir: "docs/eda"
+  model_registry_dir: "models"
+  mlruns_dir: "ml/mlruns"
+
+data_generation:
+  seed: 42
+  n_rows: 80000
+  start_date: "2023-01-01"
+  end_date: "2024-12-31"
+  output_path: "data/raw/transactions.csv"
+
+split:
+  # Time-based split — no shuffling, no leakage across boundaries.
+  train_end_date: "2024-06-30"
+  val_end_date: "2024-09-30"
+  # test set = everything after val_end_date through end_date
+
+features:
+  rolling_windows_days: [28, 84, 365]
+  min_history_days: 28
+
+training:
+  target: "units_sold"
+  model_type: "lightgbm"
+  cv_folds: 4
+  n_search_trials: 20
+  early_stopping_rounds: 50
+  random_state: 42
+
+registry:
+  keep_last_n_versions: 5
+  metadata_file: "models/registry.json"
+
+serving:
+  top_k: 5
