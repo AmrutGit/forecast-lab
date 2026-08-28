@@ -8,6 +8,7 @@ optuna==3.6.1
 mlflow==2.14.1
 joblib==1.4.2
 pyyaml==6.0.1
+shap==0.49.1
 
 # Visualization (EDA)
 matplotlib==3.9.0

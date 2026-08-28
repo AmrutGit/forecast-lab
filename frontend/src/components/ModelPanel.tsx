@@ -1,9 +1,18 @@
-import type { ModelMetadataResponse } from "../types/api";
+import type { DriftReportResponse, DriftStatus, ModelMetadataResponse } from "../types/api";
+import type { AsyncState } from "../api/useApi";
 import { Card } from "./Card";
+import { ErrorBlock, LoadingBlock } from "./StatusStates";
 
 interface ModelPanelProps {
   metadata: ModelMetadataResponse;
+  driftState: AsyncState<DriftReportResponse>;
 }
+
+const DRIFT_LABELS: Record<DriftStatus, string> = {
+  stable: "Stable",
+  moderate_shift: "Moderate shift",
+  significant_shift: "Significant shift",
+};
 
 function formatDateTime(isoDate: string): string {
   const parsed = new Date(isoDate);
@@ -24,7 +33,38 @@ function formatMetric(value: number, digits = 2): string {
   });
 }
 
-export function ModelPanel({ metadata }: ModelPanelProps) {
+function formatPercent(value: number, digits = 1): string {
+  return value.toLocaleString(undefined, {
+    style: "percent",
+    minimumFractionDigits: digits,
+    maximumFractionDigits: digits,
+  });
+}
+
+function DriftIndicator({ driftState }: { driftState: AsyncState<DriftReportResponse> }) {
+  if (driftState.status === "loading") {
+    return <LoadingBlock label="Checking drift…" />;
+  }
+  if (driftState.status === "error") {
+    return <ErrorBlock error={driftState.error} />;
+  }
+
+  const drift = driftState.data;
+  return (
+    <div className="drift">
+      <span className={`drift__badge drift__badge--${drift.status}`}>
+        <span className="drift__dot" aria-hidden="true" />
+        {DRIFT_LABELS[drift.status]}
+      </span>
+      <p className="drift__detail">
+        Largest shift in <strong>{drift.max_psi_feature}</strong> (PSI{" "}
+        {formatMetric(drift.max_psi, 3)})
+      </p>
+    </div>
+  );
+}
+
+export function ModelPanel({ metadata, driftState }: ModelPanelProps) {
   return (
     <Card title="Live model" subtitle={`Version ${metadata.version}`}>
       <dl className="model-meta">
@@ -57,7 +97,18 @@ export function ModelPanel({ metadata }: ModelPanelProps) {
             {formatMetric(metadata.metrics.ndcg_at_5, 3)}
           </span>
         </div>
+        <div className="metric-tile">
+          <span className="metric-tile__label">Interval coverage</span>
+          <span className="metric-tile__value">
+            {formatPercent(metadata.metrics.interval_coverage)}
+          </span>
+          <span className="metric-tile__hint">
+            target {formatPercent(metadata.metrics.interval_coverage_target, 0)}
+          </span>
+        </div>
       </div>
+
+      <DriftIndicator driftState={driftState} />
     </Card>
   );
 }

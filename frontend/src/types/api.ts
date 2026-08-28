@@ -22,11 +22,20 @@ export interface AttributeTypesResponse {
   attribute_types: AttributeType[];
 }
 
+export interface FeatureContribution {
+  feature: string;
+  value: number;
+  impact: number;
+}
+
 export interface AttributePrediction {
   attribute_value: AttributeValue;
   predicted_units: number;
+  predicted_units_low: number;
+  predicted_units_high: number;
   historical_avg_units: number;
   rank: number;
+  top_factors: FeatureContribution[];
 }
 
 export interface AttributePredictionGroup {
@@ -46,6 +55,9 @@ export interface ModelMetrics {
   mae: number;
   rmse: number;
   ndcg_at_5: number;
+  interval_coverage: number;
+  interval_coverage_target: number;
+  mean_interval_width: number;
 }
 
 export interface ModelParams {
@@ -60,6 +72,22 @@ export interface ModelMetadataResponse {
   params: ModelParams;
 }
 
+export type DriftStatus = "stable" | "moderate_shift" | "significant_shift";
+
+export interface FeatureDrift {
+  feature: string;
+  psi: number;
+}
+
+export interface DriftReportResponse {
+  model_version: string;
+  status: DriftStatus;
+  max_psi: number;
+  max_psi_feature: string;
+  retrain_recommended: boolean;
+  feature_psi: FeatureDrift[];
+}
+
 export type RetrainJobStatus = "running" | "completed" | "failed";
 
 export interface RetrainStartResponse {
@@ -67,10 +95,17 @@ export interface RetrainStartResponse {
   job_id: string;
 }
 
+export interface RetrainJobResult {
+  promoted: boolean;
+  promotion_reason: string;
+  [key: string]: unknown;
+}
+
 export interface RetrainStatusResponse {
   status: RetrainJobStatus;
   job_id?: string;
   detail?: string;
+  result?: RetrainJobResult;
   [key: string]: unknown;
 }
 

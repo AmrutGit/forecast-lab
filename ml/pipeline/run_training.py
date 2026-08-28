@@ -4,8 +4,10 @@
 
 Stages: load raw data -> aggregate to weekly -> engineer features ->
 time-based split -> hyperparameter search + CV (train only) -> fit final
-model (train+val) -> evaluate on held-out test -> log to MLflow -> persist
-versioned model + lookup artifacts to the registry.
+p10/p50/p90 quantile models (train+val) -> evaluate on held-out test
+(MAE/RMSE/NDCG@5 against p50, interval coverage from p10/p90) -> log to
+MLflow -> register the version as a challenger -> promote to active only if
+it beats the current champion on test MAE.
 """
 
 from __future__ import annotations
@@ -17,13 +19,13 @@ import joblib
 
 from ml.config.settings import CONFIG
 from ml.pipeline.data_loading import aggregate_to_weekly, load_raw_orders
-from ml.pipeline.evaluation import evaluate_predictions
+from ml.pipeline.evaluation import compute_interval_coverage, evaluate_predictions
 from ml.pipeline.features import (
     build_lookup_artifacts,
     engineer_features,
     save_lookup_artifacts,
 )
-from ml.pipeline.registry import ModelRegistry, ModelVersionMetadata
+from ml.pipeline.registry import ModelRegistry, ModelVersionMetadata, PromotionResult
 from ml.pipeline.splitting import time_based_split
 from ml.pipeline.training import (
     log_training_run,
@@ -43,7 +45,7 @@ def _data_version(raw_path) -> str:
     return hasher.hexdigest()[:16]
 
 
-def run_training_pipeline() -> ModelVersionMetadata:
+def run_training_pipeline() -> tuple[ModelVersionMetadata, PromotionResult]:
     cfg = CONFIG
 
     print("Loading raw orders...")
@@ -79,7 +81,7 @@ def run_training_pipeline() -> ModelVersionMetadata:
     print(f"  best CV MAE: {cv_mae:.3f}")
     print(f"  best params: {best_params}")
 
-    print("Training final model on train+val (early stopping on val)...")
+    print("Training final p10/p50/p90 quantile models on train+val (early stopping on val)...")
     model = train_final_model(
         train_df, val_df, cfg.training.target, best_params, cfg.training.early_stopping_rounds
     )
@@ -87,12 +89,21 @@ def run_training_pipeline() -> ModelVersionMetadata:
     print("Evaluating on held-out test set...")
     X_test = prepare_feature_matrix(test_df)
     test_df = test_df.copy()
-    test_df["predicted_units"] = model.predict(X_test, num_iteration=model.best_iteration_)
+    quantile_preds = model.predict(X_test)
+    test_df["predicted_units"] = quantile_preds["p50"]
+    test_df["predicted_units_p10"] = quantile_preds["p10"]
+    test_df["predicted_units_p90"] = quantile_preds["p90"]
+
     metrics = evaluate_predictions(test_df, y_true_col=cfg.training.target, y_pred_col="predicted_units", k=5)
+    metrics.update(
+        compute_interval_coverage(
+            test_df, y_true_col=cfg.training.target, lower_col="predicted_units_p10", upper_col="predicted_units_p90"
+        )
+    )
     print(f"  test metrics: {metrics}")
 
-    print("Building serving-time lookup artifacts...")
-    lookup = build_lookup_artifacts(featured)
+    print("Building serving-time lookup artifacts (incl. drift reference from training set)...")
+    lookup = build_lookup_artifacts(featured, drift_reference_df=train_df)
 
     version = dt.datetime.utcnow().strftime("%Y%m%dT%H%M%SZ")
     cfg.paths.model_registry_dir.mkdir(parents=True, exist_ok=True)
@@ -131,8 +142,17 @@ def run_training_pipeline() -> ModelVersionMetadata:
     )
     registry.register(metadata)
 
-    print(f"Registered model version {version} (mlflow run {run_id})")
-    return metadata
+    promotion: PromotionResult = registry.promote_if_better(version, comparison_metric="mae", lower_is_better=True)
+    print(f"Promotion decision: {promotion.reason}")
+    if promotion.promoted:
+        print(f"Version {version} is now the active model (mlflow run {run_id}).")
+    else:
+        print(
+            f"Version {version} registered as a challenger but NOT promoted — "
+            f"champion {promotion.champion_version} remains active."
+        )
+
+    return metadata, promotion
 
 
 if __name__ == "__main__":

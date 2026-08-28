@@ -21,8 +21,12 @@ import pandas as pd
 
 from backend.app.core.config import KEEP_LAST_N_VERSIONS, MODEL_REGISTRY_DIR, REGISTRY_METADATA_FILE
 from ml.config.taxonomy import CATEGORIES, CATEGORY_ATTRIBUTES, REGIONS
+from ml.pipeline.drift import compute_drift_report
+from ml.pipeline.explainability import top_feature_contributions
 from ml.pipeline.features import CATEGORICAL_COLUMNS, FEATURE_COLUMNS
 from ml.pipeline.registry import ModelRegistry
+
+SHAP_TOP_N_FACTORS = 3
 
 
 class ModelNotAvailableError(RuntimeError):
@@ -30,7 +34,8 @@ class ModelNotAvailableError(RuntimeError):
 
 
 class ServedModel:
-    """Wraps a loaded (model, lookup_artifacts) pair for one registry version."""
+    """Wraps a loaded (QuantileModel, lookup_artifacts) pair for one registry
+    version."""
 
     def __init__(self, version: str, model, lookup_artifacts, metadata: dict):
         self.version = version
@@ -39,9 +44,10 @@ class ServedModel:
         self.metadata = metadata
 
     def predict_group(self, region: str, category: str, attribute_type: str) -> list[dict]:
-        """Predict units_sold for every attribute_value of the given
-        (region, category, attribute_type), using each group's most recent
-        persisted feature snapshot (never recomputed ad hoc)."""
+        """Predict units_sold (p10/p50/p90) for every attribute_value of the
+        given (region, category, attribute_type), using each group's most
+        recent persisted feature snapshot (never recomputed ad hoc), plus a
+        top-factor SHAP breakdown per prediction."""
         values = CATEGORY_ATTRIBUTES.get(category, {}).get(attribute_type, [])
         rows = []
         for value in values:
@@ -58,14 +64,38 @@ class ServedModel:
         for col in CATEGORICAL_COLUMNS:
             X[col] = X[col].astype("category")
 
-        predicted = self.model.predict(X, num_iteration=getattr(self.model, "best_iteration_", None))
-        df["predicted_units"] = predicted
+        quantile_preds = self.model.predict(X)
+        df["predicted_units"] = quantile_preds["p50"]
+        df["predicted_units_low"] = quantile_preds["p10"]
+        df["predicted_units_high"] = quantile_preds["p90"]
         df["historical_avg_units"] = df["rolling_mean_12"]
+
+        top_factors = top_feature_contributions(
+            self.model.primary, X, top_n=SHAP_TOP_N_FACTORS, reportable_columns=FEATURE_COLUMNS
+        )
+        df["top_factors"] = top_factors
 
         df = df.sort_values("predicted_units", ascending=False).reset_index(drop=True)
         df["rank"] = df.index + 1
 
-        return df[["attribute_value", "predicted_units", "historical_avg_units", "rank"]].to_dict("records")
+        columns = [
+            "attribute_value",
+            "predicted_units",
+            "predicted_units_low",
+            "predicted_units_high",
+            "historical_avg_units",
+            "rank",
+            "top_factors",
+        ]
+        return df[columns].to_dict("records")
+
+    def drift_report(self, current_df: pd.DataFrame | None = None):
+        """Compare the training-time reference distribution (bundled in the
+        lookup artifact) against a "current" sample — defaults to the
+        lookup's own latest-snapshot rows, which stand in for the most
+        recent known feature values per group."""
+        current = current_df if current_df is not None else self.lookup_artifacts.latest_by_group
+        return compute_drift_report(self.lookup_artifacts.drift_reference, current)
 
 
 class ModelServer:

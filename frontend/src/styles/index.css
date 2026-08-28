@@ -26,6 +26,7 @@
 
   --status-critical: #d03b3b;
   --status-good: #0ca30c;
+  --status-warning: #b8860b;
 
   --radius-md: 10px;
   --radius-sm: 6px;
@@ -56,6 +57,7 @@
 
     --status-critical: #e66767;
     --status-good: #0ca30c;
+    --status-warning: #d4a017;
 
     --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.3), 0 1px 8px rgba(0, 0, 0, 0.25);
   }
@@ -82,6 +84,7 @@
 
   --status-critical: #e66767;
   --status-good: #0ca30c;
+  --status-warning: #d4a017;
 
   --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.3), 0 1px 8px rgba(0, 0, 0, 0.25);
 }
@@ -343,7 +346,7 @@ button {
 
 .metric-row {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(2, 1fr);
   gap: 10px;
 }
 
@@ -370,6 +373,70 @@ button {
   font-weight: 700;
   color: var(--text-primary);
   font-variant-numeric: proportional-nums;
+}
+
+.metric-tile__hint {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+/* -------------------------------------------------------------------------
+   Drift indicator
+------------------------------------------------------------------------- */
+.drift {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.drift__badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  align-self: flex-start;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.drift__dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.drift__badge--stable {
+  background: color-mix(in srgb, var(--status-good) 14%, var(--surface-card));
+  color: var(--status-good);
+}
+
+.drift__badge--stable .drift__dot {
+  background: var(--status-good);
+}
+
+.drift__badge--moderate_shift {
+  background: color-mix(in srgb, var(--status-warning) 16%, var(--surface-card));
+  color: var(--status-warning);
+}
+
+.drift__badge--moderate_shift .drift__dot {
+  background: var(--status-warning);
+}
+
+.drift__badge--significant_shift {
+  background: color-mix(in srgb, var(--status-critical) 14%, var(--surface-card));
+  color: var(--status-critical);
+}
+
+.drift__badge--significant_shift .drift__dot {
+  background: var(--status-critical);
+}
+
+.drift__detail {
+  font-size: 12.5px;
+  color: var(--text-secondary);
 }
 
 /* -------------------------------------------------------------------------
@@ -415,6 +482,52 @@ button {
   color: var(--text-primary);
   font-weight: 600;
   font-variant-numeric: tabular-nums;
+}
+
+.chart-tooltip__interval {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-top: 6px;
+  padding-top: 6px;
+  border-top: 1px solid var(--border-hairline);
+}
+
+.chart-tooltip__factors {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid var(--border-hairline);
+}
+
+.chart-tooltip__factors-title {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+  margin-bottom: 4px;
+}
+
+.chart-tooltip__factor-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: 12.5px;
+  padding: 2px 0;
+}
+
+.chart-tooltip__factor-name {
+  color: var(--text-secondary);
+}
+
+.chart-tooltip__factor-impact {
+  color: var(--status-good);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.chart-tooltip__factor-impact--negative {
+  color: var(--status-critical);
 }
 
 /* -------------------------------------------------------------------------

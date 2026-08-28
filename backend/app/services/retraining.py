@@ -45,7 +45,7 @@ class RetrainingService:
         from ml.pipeline.run_training import run_training_pipeline
 
         try:
-            metadata = run_training_pipeline()
+            metadata, promotion = run_training_pipeline()
             with self._lock:
                 self._jobs[job_id].status = "completed"
                 self._jobs[job_id].result = {
@@ -54,6 +54,8 @@ class RetrainingService:
                     "data_version": metadata.data_version,
                     "metrics": metadata.metrics,
                     "params": metadata.params,
+                    "promoted": promotion.promoted,
+                    "promotion_reason": promotion.reason,
                 }
         except Exception as exc:  # noqa: BLE001 - surface any training failure via job status
             with self._lock:

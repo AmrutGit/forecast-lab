@@ -170,10 +170,17 @@ class LookupArtifacts:
     """Persisted historical-aggregate lookups, keyed for O(1) serving-time
     feature construction. Built once from the full training-period panel and
     reused identically at inference — this is what prevents train/serve skew
-    for any feature derived from history."""
+    for any feature derived from history.
+
+    Also carries a reference sample of training-set feature values
+    (`drift_reference`), used by ml.pipeline.drift to detect when live data
+    has shifted away from what the model was trained on — bundled here
+    rather than as a separate artifact since it travels with the same model
+    version and is irrelevant once that version is retired."""
 
     latest_by_group: pd.DataFrame  # one row per group: most recent known feature snapshot
     as_of_week: pd.Timestamp
+    drift_reference: pd.DataFrame  # sample of training-set feature values, for PSI comparison
 
     def get_features_for_group(
         self, region_code: str, product_category: str, product_attribute_type: str, product_attribute_value: str
@@ -190,14 +197,24 @@ class LookupArtifacts:
         return rows.iloc[0].to_dict()
 
 
-def build_lookup_artifacts(featured_df: pd.DataFrame) -> LookupArtifacts:
+def build_lookup_artifacts(featured_df: pd.DataFrame, drift_reference_df: pd.DataFrame | None = None) -> LookupArtifacts:
     """From a fully-featured historical panel, extract the most recent row
     per group — this becomes the frozen lookup used to build serving-time
-    feature vectors for "predict next period" requests."""
+    feature vectors for "predict next period" requests.
+
+    `drift_reference_df` should be the *training-set* slice of the featured
+    panel (passed explicitly by the caller, since this function also gets
+    called with the full historical panel for the lookup half); it's stored
+    verbatim for later PSI comparison against live data. Defaults to
+    `featured_df` itself if not given.
+    """
     latest_idx = featured_df.groupby(GROUP_KEYS)["week_start"].idxmax()
     latest = featured_df.loc[latest_idx].reset_index(drop=True)
     as_of_week = featured_df["week_start"].max()
-    return LookupArtifacts(latest_by_group=latest, as_of_week=as_of_week)
+    drift_reference = (drift_reference_df if drift_reference_df is not None else featured_df)[
+        FEATURE_COLUMNS
+    ].copy()
+    return LookupArtifacts(latest_by_group=latest, as_of_week=as_of_week, drift_reference=drift_reference)
 
 
 def save_lookup_artifacts(artifacts: LookupArtifacts, path) -> None:

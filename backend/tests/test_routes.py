@@ -48,6 +48,19 @@ def test_get_predictions_valid_region_and_category(client):
         preds = [p["predicted_units"] for p in group["predictions"]]
         assert preds == sorted(preds, reverse=True)
 
+        for prediction in group["predictions"]:
+            # p10 <= p50 <= p90 should hold for the vast majority of
+            # predictions from independently-trained quantile models; we
+            # don't assert it as a hard invariant here (that's covered more
+            # rigorously in ml/tests), just that the fields are present and
+            # sane in shape.
+            assert prediction["predicted_units_low"] <= prediction["predicted_units_high"]
+            assert isinstance(prediction["top_factors"], list)
+            assert len(prediction["top_factors"]) > 0
+            for factor in prediction["top_factors"]:
+                assert "feature" in factor
+                assert "impact" in factor
+
 
 def test_get_predictions_unknown_region(client):
     resp = client.get("/api/predictions", params={"region": "Nowhere", "category": "Outerwear"})
@@ -69,7 +82,18 @@ def test_get_model_metadata(client):
     assert resp.status_code == 200
     body = resp.json()
     assert "version" in body
-    assert set(body["metrics"].keys()) >= {"mae", "rmse", "ndcg_at_5"}
+    assert set(body["metrics"].keys()) >= {"mae", "rmse", "ndcg_at_5", "interval_coverage"}
+
+
+def test_get_model_drift(client):
+    resp = client.get("/api/model/drift")
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["status"] in {"stable", "moderate_shift", "significant_shift"}
+    assert isinstance(body["retrain_recommended"], bool)
+    assert len(body["feature_psi"]) > 0
+    for entry in body["feature_psi"]:
+        assert entry["psi"] >= 0
 
 
 def test_retrain_status_unknown_job(client):
@@ -83,3 +107,4 @@ def test_openapi_schema_is_served(client):
     paths = resp.json()["paths"]
     assert "/api/predictions" in paths
     assert "/api/model/metadata" in paths
+    assert "/api/model/drift" in paths

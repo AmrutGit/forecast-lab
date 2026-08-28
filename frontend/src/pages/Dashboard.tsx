@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import {
   getAttributeTypes,
   getCategories,
+  getModelDrift,
   getModelMetadata,
   getPredictions,
   getRegions,
@@ -55,6 +56,7 @@ export function Dashboard() {
   );
 
   const modelMetadataState = useAsync((signal) => getModelMetadata(signal), []);
+  const driftState = useAsync((signal) => getModelDrift(signal), []);
 
   const selectorsReady =
     regionsState.status === "success" && categoriesState.status === "success";
@@ -119,7 +121,7 @@ export function Dashboard() {
           ) : modelMetadataState.status === "error" ? (
             <ErrorBlock error={modelMetadataState.error} />
           ) : (
-            <ModelPanel metadata={modelMetadataState.data} />
+            <ModelPanel metadata={modelMetadataState.data} driftState={driftState} />
           )}
         </aside>
       </div>

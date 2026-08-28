@@ -7,6 +7,7 @@ import { apiRequest } from "./client";
 import type {
   AttributeTypesResponse,
   CategoriesResponse,
+  DriftReportResponse,
   ModelMetadataResponse,
   PredictionsResponse,
   RegionsResponse,
@@ -47,6 +48,10 @@ export function getModelMetadata(
   signal?: AbortSignal,
 ): Promise<ModelMetadataResponse> {
   return apiRequest<ModelMetadataResponse>("/api/model/metadata", { signal });
+}
+
+export function getModelDrift(signal?: AbortSignal): Promise<DriftReportResponse> {
+  return apiRequest<DriftReportResponse>("/api/model/drift", { signal });
 }
 
 export function startRetrain(

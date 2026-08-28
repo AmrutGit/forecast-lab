@@ -7,9 +7,12 @@ from backend.app.schemas.predictions import (
     AttributeTypeGroup,
     AttributeTypesResponse,
     CategoriesResponse,
+    DriftReportResponse,
+    FeatureDrift,
     ModelMetadataResponse,
     PredictionResponse,
     RegionsResponse,
+    RetrainResult,
     RetrainStartResponse,
     RetrainStatusResponse,
 )
@@ -101,5 +104,27 @@ def get_retrain_status(job_id: str) -> RetrainStatusResponse:
     if job is None:
         raise HTTPException(status_code=404, detail=f"Unknown retrain job_id: {job_id!r}")
 
-    result_model = ModelMetadataResponse(**job.result) if job.result else None
+    result_model = RetrainResult(**job.result) if job.result else None
     return RetrainStatusResponse(job_id=job.job_id, status=job.status, detail=job.detail, result=result_model)
+
+
+@router.get("/model/drift", response_model=DriftReportResponse)
+def get_model_drift() -> DriftReportResponse:
+    """Population Stability Index of key features vs. the training-time
+    reference distribution — a signal for whether a retrain is warranted,
+    independent of whether ground-truth labels for the recent period exist
+    yet."""
+    try:
+        served_model = model_server.get_active()
+    except ModelNotAvailableError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+
+    report = served_model.drift_report()
+    return DriftReportResponse(
+        model_version=served_model.version,
+        status=report.status,
+        max_psi=report.max_psi,
+        max_psi_feature=report.max_psi_feature,
+        retrain_recommended=report.retrain_recommended,
+        feature_psi=[FeatureDrift(feature=k, psi=v) for k, v in report.feature_psi.items()],
+    )

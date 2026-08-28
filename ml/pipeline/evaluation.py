@@ -1,5 +1,7 @@
-"""Evaluation metrics: MAE, RMSE (regression accuracy) and NDCG@5 (ranking
-quality within each region/category/attribute_type group), as justified in
+"""Evaluation metrics: MAE, RMSE (regression accuracy, scored against the
+p50/median prediction), NDCG@5 (ranking quality within each
+region/category/attribute_type group), and prediction-interval coverage
+(calibration of the p10/p90 quantile models), as justified in
 docs/problem_framing.md.
 """
 
@@ -66,6 +68,22 @@ def compute_ndcg_at_k(df: pd.DataFrame, y_true_col: str, y_pred_col: str, k: int
         return {f"ndcg_at_{k}": float("nan"), f"ndcg_at_{k}_n_groups": 0}
 
     return {f"ndcg_at_{k}": float(np.mean(scores)), f"ndcg_at_{k}_n_groups": len(scores)}
+
+
+def compute_interval_coverage(
+    df: pd.DataFrame, y_true_col: str, lower_col: str, upper_col: str, nominal_coverage: float = 0.8
+) -> dict:
+    """Fraction of actuals falling within [lower, upper] (the p10/p90 band).
+    A well-calibrated 80% interval should cover close to 80% of actuals —
+    reported alongside the nominal target so under/over-coverage is visible
+    (e.g. an interval that's too narrow will show coverage well below 0.8).
+    """
+    within = (df[y_true_col] >= df[lower_col]) & (df[y_true_col] <= df[upper_col])
+    return {
+        "interval_coverage": float(within.mean()),
+        "interval_coverage_target": nominal_coverage,
+        "mean_interval_width": float((df[upper_col] - df[lower_col]).mean()),
+    }
 
 
 def evaluate_predictions(df: pd.DataFrame, y_true_col: str, y_pred_col: str, k: int = 5) -> dict:
